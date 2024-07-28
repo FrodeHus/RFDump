@@ -31,7 +31,7 @@ public partial class DumpCommand(SerialService serialService)
     }
 
     [Command("dump")]
-    public async Task Dump(string port, uint chunkSize = 0x10000)
+    public async Task Dump(string port, uint chunkSize = 0x1000)
     {
         var result = _serialService.Connect(port);
 
@@ -61,7 +61,7 @@ public partial class DumpCommand(SerialService serialService)
 
             var address = bootloaderHandler.BootAddress;
             var endAddress = address + 0x1000000;
-            var dumpProgress = ctx.AddTask($"Dumping memory from [cyan]0x{address:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...", true, maxValue: endAddress);
+            var dumpProgress = ctx.AddTask($"Dumping memory [cyan]0x{address:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...", true, maxValue: endAddress);
             var currentAddress = address;
             await using var file = File.Create("c:\\temp\\dump.bin");
             while (currentAddress < endAddress)
@@ -70,14 +70,14 @@ public partial class DumpCommand(SerialService serialService)
                 var (success, lastKnownGoodAddress, binaryData) = ValidateDumpData(dump, currentAddress);
                 if (!success)
                 {
-                    var step = (currentAddress + chunkSize) - lastKnownGoodAddress;
+                    var step = chunkSize - ((currentAddress + chunkSize) - lastKnownGoodAddress);
                     currentAddress = lastKnownGoodAddress;
-                    dumpProgress.Description = $"Dumping memory from [cyan]0x{currentAddress:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...";
+                    dumpProgress.Description = $"Dumping memory [cyan]0x{currentAddress:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...";
                     dumpProgress.Increment(step);
                     continue;
                 }
                 currentAddress += chunkSize;
-                dumpProgress.Description = $"Dumping memory from [cyan]0x{currentAddress:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/] ({Math.Round((double)file.Length / 1024, 0)}Kb)...";
+                dumpProgress.Description = $"Dumping memory [cyan]0x{currentAddress:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/] ({Math.Round((double)file.Position / 1024, 0)}Kb)...";
                 dumpProgress.Increment(chunkSize);
                 await file.WriteAsync(binaryData);
                 await file.FlushAsync();
