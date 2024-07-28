@@ -31,9 +31,9 @@ public partial class DumpCommand(SerialService serialService)
     }
 
     [Command("dump")]
-    public async Task Dump(string port, uint chunkSize = 0x1000)
+    public async Task Dump(string port, int baudRate = 115200, string filename = "firmware.bin", uint chunkSize = 0x1000)
     {
-        var result = _serialService.Connect(port);
+        var result = _serialService.Connect(port, baudRate);
 
         if (result.IsFailure)
         {
@@ -63,7 +63,7 @@ public partial class DumpCommand(SerialService serialService)
             var endAddress = address + 0x1000000;
             var dumpProgress = ctx.AddTask($"Dumping memory [cyan]0x{address:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...", true, maxValue: endAddress);
             var currentAddress = address;
-            await using var file = File.Create("c:\\temp\\dump.bin");
+            await using var file = File.Create(filename);
             while (currentAddress < endAddress)
             {
                 var dump = await serial.DumpMemoryBlock(currentAddress, chunkSize);
