@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO.Ports;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.IO.Ports;
 
 using QuiCLI.Common;
 
@@ -11,10 +6,10 @@ namespace RFDump.Service
 {
     public class SerialService
     {
-        private SerialPort _port;
+        private SerialPort? _port;
         public Result<SerialPort> Connect(string port, int baudRate = 115200)
         {
-            _port = new SerialPort(port, baudRate);
+            _port = new SerialPort(port, baudRate, Parity.None, 8, StopBits.One);
             try
             {
                 _port.Open();
@@ -28,11 +23,12 @@ namespace RFDump.Service
 
         public void Disconnect()
         {
-            _port.Close();
+            _port?.Close();
         }
 
-        public Result<bool> IsConnected() {
-            return _port.IsOpen;
+        public Result<bool> IsConnected()
+        {
+            return _port?.IsOpen ?? false;
         }
 
         /// <summary>
