@@ -41,7 +41,7 @@ The `dump` command can be used to extract firmware from a device.
 
 Arguments:
 
-- `--port` or `-p`: The serial port to connect to.
+- `--port`: The serial port to connect to.
 - `--filename`: The name of the file to save the firmware to.
 - `--baud-rate`: The baud rate to use when connecting to the device.
 - `--chunk-size`: The size of the chunks to read from the device. (Default: 4096).   

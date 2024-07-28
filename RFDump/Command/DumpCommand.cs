@@ -73,7 +73,7 @@ public partial class DumpCommand(SerialService serialService)
                 {
                     var step = chunkSize - ((currentAddress + chunkSize) - lastKnownGoodAddress);
                     currentAddress = lastKnownGoodAddress;
-                    dumpProgress.Description = $"Dumping memory [cyan]0x{currentAddress:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...";
+                    dumpProgress.Description = $"Recovery in progress [cyan]0x{currentAddress:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...";
                     dumpProgress.Increment(step);
                     continue;
                 }
