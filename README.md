@@ -39,6 +39,21 @@ Available Ports: COM1, COM3
 
 The `dump` command can be used to extract firmware from a device.
 
+Arguments:
+
+- `--port` or `-p`: The serial port to connect to.
+- `--filename`: The name of the file to save the firmware to.
+- `--baud-rate`: The baud rate to use when connecting to the device.
+- `--chunk-size`: The size of the chunks to read from the device. (Default: 4096).   
+  - Smaller chunk sizes allow for quicker verification of the data read from the device and quicker recovery.  
+
 ```bash
-./RFDump dump --port COM3 --filename firmware.bin --baud-rate 115200 --chunk-size 0x1000
+.\RFDump.exe dump --port COM3 --filename firmware.bin
+
+Dumping firmware from device connected to port COM3 at 115200 baud rate to firmware.bin with a chunk size of 4096 bytes
+Bootloader detected: U-Boot
+
+                          Access boot loader... ---------------------------------------- 100%
+                       Gathering information... ---------------------------------------- 100%
+Dumping memory 0xBC0A99C0/0xBD050000 (287Kb)... ----------------------------------------   2%
 ```

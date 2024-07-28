@@ -15,6 +15,8 @@ namespace RFDump.Bootloader.UBoot
 
         public uint BootAddress { get; private set; }
 
+        public string BootloaderInfo { get; private set; } = "U-Boot";
+
         public bool IsReady { get; private set; }
 
         internal async Task Initialize()
@@ -122,6 +124,8 @@ namespace RFDump.Bootloader.UBoot
 
         public void HandleBoot(string prelimData)
         {
+            var version = GetUBootVersion(prelimData);
+            BootloaderInfo = $"U-Boot {version}";
             CheckForAutobootInterrupt(prelimData);
         }
 

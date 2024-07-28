@@ -33,6 +33,7 @@ public partial class DumpCommand(SerialService serialService)
     [Command("dump")]
     public async Task Dump(string port, int baudRate = 115200, string filename = "firmware.bin", uint chunkSize = 0x1000)
     {
+        AnsiConsole.MarkupLine($"[bold]Dumping firmware from device connected to port [yellow]{port}[/] at [yellow]{baudRate}[/] baud rate to [yellow]{filename}[/] with a chunk size of [yellow]{chunkSize}[/] bytes[/]");
         var result = _serialService.Connect(port, baudRate);
 
         if (result.IsFailure)
@@ -61,7 +62,7 @@ public partial class DumpCommand(SerialService serialService)
 
             var address = bootloaderHandler.BootAddress;
             var endAddress = address + 0x1000000;
-            var dumpProgress = ctx.AddTask($"Dumping memory [cyan]0x{address:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...", true, maxValue: endAddress);
+            var dumpProgress = ctx.AddTask($"Dumping memory [cyan]0x{address:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...", true, maxValue: 0x1000000);
             var currentAddress = address;
             await using var file = File.Create(filename);
             while (currentAddress < endAddress)
@@ -167,6 +168,7 @@ public partial class DumpCommand(SerialService serialService)
 
             if (_bootHandler != null)
             {
+                AnsiConsole.MarkupLine($"[bold green]Bootloader detected:[/] {_bootHandler.BootloaderInfo}");
                 sp.DataReceived -= Initialize;
                 _bootHandler.HandleBoot(data);
                 break;
