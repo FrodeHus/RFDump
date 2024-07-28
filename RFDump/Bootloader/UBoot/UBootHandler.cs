@@ -13,9 +13,7 @@ namespace RFDump.Bootloader.UBoot
         private bool _disposedValue;
         private Dictionary<string, string> _environment = new();
 
-        internal uint BootAddress { get; private set; }
-
-        uint IBootHandler.BootAddress => throw new NotImplementedException();
+        public uint BootAddress { get; private set; }
 
         public bool IsReady { get; private set; }
 
@@ -122,15 +120,39 @@ namespace RFDump.Bootloader.UBoot
             GC.SuppressFinalize(this);
         }
 
-        public async Task HandleBoot(string cleanLine)
+        public void HandleBoot(string prelimData)
         {
-            if (cleanLine.StartsWith("Hit any key to stop autoboot"))
+            CheckForAutobootInterrupt(prelimData);
+        }
+
+        private void CheckForAutobootInterrupt(string? data = null)
+        {
+            if (data == null)
             {
-                var result = await _serialPort.WriteCommand("\n");
-                if (string.IsNullOrEmpty(result))
-                {
-                    IsReady = true;
-                }
+                data = _serialPort.ReadExisting();
+            }
+            else
+            {
+                _serialPort.DataReceived += OnDataReceived;
+            }
+
+            if (data.Contains("Hit any key to stop autoboot"))
+            {
+                _serialPort.Write("\n");
+            }
+
+            if (data.Contains("=>"))
+            {
+                IsReady = true;
+            }
+        }
+
+        private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            CheckForAutobootInterrupt();
+            if (IsReady)
+            {
+                _serialPort.DataReceived -= OnDataReceived;
             }
         }
     }

@@ -5,6 +5,6 @@
         uint BootAddress { get; }
         bool IsReady { get; }
         void Dispose();
-        Task HandleBoot(string cleanLine);
+        void HandleBoot(string prelimData);
     }
 }
