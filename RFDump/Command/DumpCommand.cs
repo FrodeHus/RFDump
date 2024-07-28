@@ -1,16 +1,25 @@
 ﻿using QuiCLI.Command;
+
 using RFDump.Service;
+
 using Spectre.Console;
+
 namespace RFDump.Command;
 public class DumpCommand(SerialService serialService)
 {
     private readonly SerialService _serialService = serialService;
 
     [Command("dump")]
-    public string Dump(string port)
+    public async Task Dump(string port)
     {
-        AnsiConsole.Write(new Markup( $"Connecting to [bold yellow]{port}[/]"));
-        return "Hello World!";
+        var result = _serialService.Connect(port);
+        if (result.IsFailure)
+        {
+            AnsiConsole.Write(new Markup($"[bold red]{result.Error}[/]"));
+        }
+        await AnsiConsole.Status().StartAsync("Dumping data", async ctx =>
+        {
+        });
     }
 
     [Command("ports")]
