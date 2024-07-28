@@ -39,6 +39,8 @@ Available Ports: COM1, COM3
 
 The `dump` command can be used to extract firmware from a device.
 
+Start the tool before plugging in the device to ensure that the tool can detect the device when it is connected and access the bootloader.
+
 Arguments:
 
 - `--port`: The serial port to connect to.
@@ -57,3 +59,9 @@ Bootloader detected: U-Boot
                        Gathering information... ---------------------------------------- 100%
 Dumping memory 0xBC0A99C0/0xBD050000 (287Kb)... ----------------------------------------   2%
 ```
+
+If the tool discovers that the data read from the device is incorrect, it will attempt to re-read the data. This will be indicated by the following message:
+
+```text
+Recovery in progress 0xBC087BA0/0xBD050000... ----------------------------------------   1%
+``` 
