@@ -3,18 +3,19 @@ using System.Text.RegularExpressions;
 
 using QuiCLI.Command;
 
+using RFDump.Bootloader;
+using RFDump.Bootloader.UBoot;
 using RFDump.Extensions;
 using RFDump.Service;
 
 using Spectre.Console;
 
 namespace RFDump.Command;
-public class DumpCommand(SerialService serialService)
+public partial class DumpCommand(SerialService serialService)
 {
     private readonly SerialService _serialService = serialService;
-    private bool _readyForInput = false;
-    private Dictionary<string, string> _environment = new();
-    private readonly Regex _dataRegex = new Regex(@"(?<address>[a-f0-9]+): (?<bytes>[a-z0-9\s]+)    (?<ascii>.*)");
+    private IBootHandler? _bootHandler = null;
+    private readonly Regex _dataRegex = DataLineMatcher();
 
     [Command("ports")]
     public string Ports()
@@ -46,41 +47,21 @@ public class DumpCommand(SerialService serialService)
         {
             var bootloader = ctx.AddTask("Access boot loader...", true);
             bootloader.IsIndeterminate = true;
-            while (!_readyForInput)
+            while (!_bootHandler?.IsReady ?? true)
             {
                 await Task.Delay(100);
             }
             bootloader.Increment(100);
             serial.DataReceived -= Initialize;
 
+            var bootloaderHandler = new UBootHandler(serial);
             var gatherInfo = ctx.AddTask("Gathering information...", true);
-            var help = await serial.WriteCommand("help\n");
-            var commands = ParseUBootHelp(help);
-            gatherInfo.Increment(20);
-            if (commands.ContainsKey("printenv"))
-            {
-                var environ = await serial.WriteCommand("printenv\n");
-                _environment = ParseKeyValues(environ);
-            }
-            gatherInfo.Increment(20);
+            await bootloaderHandler.Initialize();
+            gatherInfo.Increment(100);
 
-
-            if (commands.ContainsKey("bdinfo"))
-            {
-                var bdinfo = await serial.WriteCommand("bdinfo\n");
-                var boardInformation = ParseKeyValues(bdinfo);
-            }
-            gatherInfo.Increment(20);
-
-            var address = DetectAddress();
-            if (address == 0)
-            {
-                AnsiConsole.MarkupLine("[red]Failed to detect boot address[/]");
-                return;
-            }
-            gatherInfo.Increment(40);
-
-            var dumpProgress = ctx.AddTask($"Dumping memory from [cyan]0x{address:X}[/]...", true, maxValue: (address + 0x1000000));
+            var address = bootloaderHandler.BootAddress;
+            var endAddress = address + 0x1000000;
+            var dumpProgress = ctx.AddTask($"Dumping memory from [cyan]0x{address:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...", true, maxValue: endAddress);
             var currentAddress = address;
             await using var file = File.Create("c:\\temp\\dump.bin");
             while (currentAddress < address + 0x1000000)
@@ -90,12 +71,12 @@ public class DumpCommand(SerialService serialService)
                 if (!success)
                 {
                     currentAddress = lastKnownGoodAddress;
-                    dumpProgress.Description = $"Dumping memory from [cyan]0x{currentAddress:X}[/]...";
+                    dumpProgress.Description = $"Dumping memory from [cyan]0x{currentAddress:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...";
                     dumpProgress.Value = currentAddress;
                     continue;
                 }
                 currentAddress += chunkSize;
-                dumpProgress.Description = $"Dumping memory from [cyan]0x{currentAddress:X}[/]...";
+                dumpProgress.Description = $"Dumping memory from [cyan]0x{currentAddress:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...";
                 dumpProgress.Increment(chunkSize);
                 await file.WriteAsync(binaryData);
                 await file.FlushAsync();
@@ -173,47 +154,6 @@ public class DumpCommand(SerialService serialService)
         return (true, validBytes);
     }
 
-    private static Dictionary<string, string> ParseKeyValues(string data)
-    {
-        var keyValues = new Dictionary<string, string>();
-        foreach (var line in data.Split("\n"))
-        {
-            var cleanLine = line.Replace("\r", "");
-            if (cleanLine.Contains("="))
-            {
-                var parts = cleanLine.Split("=");
-                keyValues[parts[0]] = parts[1];
-            }
-        }
-        return keyValues;
-    }
-
-    private uint DetectAddress()
-    {
-        if (_environment.TryGetValue("bootaddr", out var bootaddr))
-        {
-            if (bootaddr.Contains('+'))
-            {
-                uint addr = 0x0;
-                foreach (var value in bootaddr.Split("+"))
-                {
-                    addr += Convert.ToUInt32(value.Trim(), 16);
-                }
-                return addr;
-            }
-            return Convert.ToUInt32(bootaddr, 16);
-        }
-        else if (_environment.TryGetValue("bootcmd", out var bootcmd) && bootcmd.StartsWith("bootm"))
-        {
-            var match = Regex.Match(bootcmd, @"0x([0-9a-fA-F]+)");
-            if (match.Success)
-            {
-                return Convert.ToUInt32(match.Groups[1].Value, 16);
-            }
-        }
-        return 0;
-    }
-
     private void Initialize(object sender, SerialDataReceivedEventArgs e)
     {
         var sp = (SerialPort)sender;
@@ -222,20 +162,9 @@ public class DumpCommand(SerialService serialService)
         foreach (var line in data.Split("\n"))
         {
             var cleanLine = line.Replace("\r", "");
-            if (cleanLine.Contains("U-Boot"))
-            {
-                var version = GetUBootVersion(cleanLine);
-                AnsiConsole.MarkupLine($"Detected [cyan]U-Boot[/] [yellow]{version}[/] bootloader...");
-            }
-            else if (cleanLine.StartsWith("Hit any key to stop autoboot"))
-            {
-                sp.Write("\n");
-            }
-            else
-            {
-                _readyForInput = cleanLine.StartsWith("=>");
+            _bootHandler = Detector.DetectBootloader(cleanLine, sp);
 
-            }
+            _bootHandler?.HandleBoot(cleanLine).RunSynchronously();
         }
     }
 
@@ -244,43 +173,6 @@ public class DumpCommand(SerialService serialService)
         return data.Replace("[", "[[").Replace("]", "]]");
     }
 
-    private string GetUBootVersion(string data)
-    {
-        var match = Regex.Match(data, @"U-Boot ([0-9.]+)");
-        return match.Success ? match.Groups[1].Value : string.Empty;
-    }
-
-
-
-    private void RenderEnvironment()
-    {
-        var table = new Table
-        {
-            Border = TableBorder.Minimal
-        };
-        table.AddColumn("Variable");
-        table.AddColumn("Value");
-
-        foreach (var (key, value) in _environment)
-        {
-            table.AddRow(key, value);
-        }
-
-        AnsiConsole.Write(table);
-    }
-
-    private static Dictionary<string, string> ParseUBootHelp(string rawHelp)
-    {
-        var commands = new Dictionary<string, string>();
-        foreach (var line in rawHelp.Split("\n"))
-        {
-            var cleanLine = line.Replace("\r", "");
-            if (cleanLine.Contains("-"))
-            {
-                var parts = cleanLine.Split("-");
-                commands[parts[0].Trim()] = parts[1].Trim();
-            }
-        }
-        return commands;
-    }
+    [GeneratedRegex(@"(?<address>[a-f0-9]+): (?<bytes>[a-z0-9\s]+)    (?<ascii>.*)")]
+    private static partial Regex DataLineMatcher();
 }
