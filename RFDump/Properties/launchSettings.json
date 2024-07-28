@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "RFDump": {
+      "commandName": "Project",
+      "commandLineArgs": "ports"
+    }
+  }
+}
