@@ -44,7 +44,14 @@ public partial class DumpCommand(SerialService serialService)
         var serial = result.Value;
         serial.DataReceived += Initialize;
 
-        await AnsiConsole.Progress().AutoClear(false).StartAsync(async ctx =>
+        await AnsiConsole.Progress().AutoClear(false).Columns(
+            [
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+                new RemainingTimeColumn(),
+                new SpinnerColumn(),
+            ]).StartAsync(async ctx =>
         {
             var bootloader = ctx.AddTask("Access boot loader...", true);
             bootloader.IsIndeterminate = true;
@@ -67,6 +74,11 @@ public partial class DumpCommand(SerialService serialService)
             await using var file = File.Create(filename);
             while (currentAddress < endAddress)
             {
+                if (currentAddress + chunkSize > endAddress)
+                {
+                    chunkSize = endAddress - currentAddress;
+                }
+
                 var dump = await serial.DumpMemoryBlock(currentAddress, chunkSize);
                 var (success, lastKnownGoodAddress, binaryData) = ValidateDumpData(dump, currentAddress);
                 if (!success)
@@ -77,6 +89,7 @@ public partial class DumpCommand(SerialService serialService)
                     dumpProgress.Increment(step);
                     continue;
                 }
+
                 currentAddress += chunkSize;
                 dumpProgress.Description = $"Dumping memory [cyan]0x{currentAddress:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/] ({Math.Round((double)file.Position / 1024, 0)}Kb)...";
                 dumpProgress.Increment(chunkSize);
