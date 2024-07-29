@@ -184,8 +184,6 @@ namespace RFDump.Bootloader.UBoot
 
         public async Task HandleBoot(string prelimData)
         {
-            //var version = GetUBootVersion(prelimData);
-            //BootloaderInfo = $"U-Boot {version}";
             await CheckForAutobootInterrupt(prelimData);
         }
 

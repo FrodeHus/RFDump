@@ -46,7 +46,7 @@ Arguments:
 - `--port`: The serial port to connect to.
 - `--filename`: The name of the file to save the firmware to.
 - `--baud-rate`: The baud rate to use when connecting to the device.
-- `--chunk-size`: The size of the chunks to read from the device. (Default: 4096).   
+- `--chunk-size`: The size of the chunks to read from the device. (Default: 16384).   
   - Smaller chunk sizes allow for quicker verification of the data read from the device and quicker recovery.  
 
 ```bash

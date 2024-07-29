@@ -8,6 +8,7 @@
     <PublishAot>true</PublishAot>
     <PublishTrimmed>True</PublishTrimmed>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>rfdump</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
