@@ -1,6 +1,4 @@
 ﻿using System.IO.Ports;
-using System.Net.Http.Headers;
-using System.Security.Cryptography;
 
 using QuiCLI.Common;
 
@@ -48,14 +46,17 @@ namespace RFDump.Service
             return _port == null ? throw new InvalidOperationException("Serial port not connected") : _port.ReadExisting();
         }
 
-        public void SendKey(ConsoleKey key)
+        public async Task<string> SendKey(ConsoleKey key)
         {
-            SendKey((char)key);
+            return await SendKey((char)key);
+
         }
 
-        public void SendKey(char key)
+        public async Task<string> SendKey(char key)
         {
             _port?.SendKey(key);
+            await Task.Delay(100);
+            return ReadAvailableData();
         }
 
         public async Task<IBootHandler> DetectBootLoader()
@@ -63,7 +64,7 @@ namespace RFDump.Service
             var start = DateTime.Now;
             while (true)
             {
-                if (DateTime.Now - start > TimeSpan.FromSeconds(30))
+                if (DateTime.Now - start > TimeSpan.FromSeconds(60))
                 {
                     throw new Exception("Failed to detect bootloader");
                 }
@@ -72,6 +73,7 @@ namespace RFDump.Service
                 var handler = Detector.DetectBootloader(data, this);
                 if (handler != null)
                 {
+                    await handler.HandleBoot(data);
                     return handler;
                 }
                 await Task.Delay(100);

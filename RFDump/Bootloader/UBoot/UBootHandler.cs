@@ -1,5 +1,4 @@
-﻿using System.IO.Ports;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 using RFDump.Service;
 
@@ -177,14 +176,14 @@ namespace RFDump.Bootloader.UBoot
             return match.Success ? match.Groups[1].Value : string.Empty;
         }
 
-        public void HandleBoot(string prelimData)
+        public async Task HandleBoot(string prelimData)
         {
-            var version = GetUBootVersion(prelimData);
-            BootloaderInfo = $"U-Boot {version}";
-            CheckForAutobootInterrupt(prelimData);
+            //var version = GetUBootVersion(prelimData);
+            //BootloaderInfo = $"U-Boot {version}";
+            await CheckForAutobootInterrupt(prelimData);
         }
 
-        private void CheckForAutobootInterrupt(string? data = null)
+        private async Task CheckForAutobootInterrupt(string? data = null)
         {
             if (data == null)
             {
@@ -193,13 +192,16 @@ namespace RFDump.Bootloader.UBoot
 
             if (data.Contains("Hit any key to stop autoboot"))
             {
-                _serialService.SendKey(ConsoleKey.Enter);
+                var result = await _serialService.SendKey(ConsoleKey.Enter);
+                if (result.Contains("=>"))
+                {
+                    IsReady = true;
+                    return;
+                }
             }
 
-            if (data.Contains("=>"))
-            {
-                IsReady = true;
-            }
+            await Task.Delay(100);
+            await CheckForAutobootInterrupt();
         }
     }
 }

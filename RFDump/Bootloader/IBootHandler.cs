@@ -6,7 +6,7 @@
         string BootloaderInfo { get; }
         uint BootAddress { get; }
         bool IsReady { get; }
-        void HandleBoot(string prelimData);
+        Task HandleBoot(string prelimData);
         (bool success, uint lastKnownGoodAddress, byte[] binaryData) ValidateDumpData(string data, uint startAddress);
     }
 }
