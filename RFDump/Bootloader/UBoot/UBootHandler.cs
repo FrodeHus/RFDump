@@ -34,6 +34,12 @@ namespace RFDump.Bootloader.UBoot
                 var boardInformation = ParseKeyValues(bdinfo);
             }
 
+            if (commands.ContainsKey("version"))
+            {
+                var version = await _serialService.Execute("version\n");
+                BootloaderInfo = $"U-Boot {GetUBootVersion(version)}";
+            }
+
             BootAddress = DetectAddress();
             if (BootAddress == 0)
             {
