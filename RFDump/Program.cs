@@ -9,4 +9,5 @@ builder.Services.AddTransient<SerialService>();
 var app = builder.Build();
 
 app.AddCommand((sp) => new DumpCommand(sp.GetRequiredService<SerialService>()));
+app.AddCommand((sp) => new PortCommand(sp.GetRequiredService<SerialService>()));
 app.Run();

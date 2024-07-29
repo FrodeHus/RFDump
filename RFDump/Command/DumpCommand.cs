@@ -9,19 +9,6 @@ public class DumpCommand(SerialService serialService)
 {
     private readonly SerialService _serialService = serialService;
 
-    [Command("ports")]
-    public string Ports()
-    {
-        var ports = _serialService.GetPorts();
-        if (ports.IsFailure)
-        {
-            AnsiConsole.Write(new Markup($"[bold red]{ports.Error}[/]"));
-            return string.Empty;
-        }
-        AnsiConsole.Write(new Markup($"Available ports: [bold yellow]{string.Join(", ", ports.Value)}[/]"));
-        return string.Empty;
-    }
-
     [Command("dump")]
     public async Task Dump(string port, int baudRate = 115200, string filename = "firmware.bin", uint chunkSize = 0x4000)
     {
