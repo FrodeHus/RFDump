@@ -4,7 +4,10 @@ namespace RFDump.Extensions
 {
     public static class SerialPortExtensions
     {
-
+        public static void SendKey(this SerialPort serialPort, char key)
+        {
+            serialPort.Write(key.ToString());
+        }
         public static Task<string> WriteCommand(this SerialPort serialPort, string command)
         {
             return Task.Run(() =>

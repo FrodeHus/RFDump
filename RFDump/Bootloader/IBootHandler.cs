@@ -1,11 +1,12 @@
 ﻿namespace RFDump.Bootloader
 {
-    internal interface IBootHandler
+    public interface IBootHandler
     {
+        Task Initialize();
         string BootloaderInfo { get; }
         uint BootAddress { get; }
         bool IsReady { get; }
-        void Dispose();
         void HandleBoot(string prelimData);
+        (bool success, uint lastKnownGoodAddress, byte[] binaryData) ValidateDumpData(string data, uint startAddress);
     }
 }

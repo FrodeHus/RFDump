@@ -1,16 +1,16 @@
 ﻿using System.IO.Ports;
 using System.Text.RegularExpressions;
 
-using RFDump.Extensions;
+using RFDump.Service;
 
 using Spectre.Console;
 
 namespace RFDump.Bootloader.UBoot
 {
-    internal class UBootHandler(SerialPort serialPort) : IDisposable, IBootHandler
+    internal partial class UBootHandler(SerialService serialService) : IBootHandler
     {
-        private readonly SerialPort _serialPort = serialPort;
-        private bool _disposedValue;
+        private readonly SerialService _serialService = serialService;
+        private readonly Regex _dataRegex = DataLineMatcher();
         private Dictionary<string, string> _environment = new();
 
         public uint BootAddress { get; private set; }
@@ -19,19 +19,19 @@ namespace RFDump.Bootloader.UBoot
 
         public bool IsReady { get; private set; }
 
-        internal async Task Initialize()
+        public async Task Initialize()
         {
-            var help = await _serialPort.WriteCommand("help\n");
+            var help = await _serialService.Execute("help\n");
             var commands = ParseUBootHelp(help);
 
             if (commands.ContainsKey("printenv"))
             {
-                var environ = await _serialPort.WriteCommand("printenv\n");
+                var environ = await _serialService.Execute("printenv\n");
                 _environment = ParseKeyValues(environ);
             }
             if (commands.ContainsKey("bdinfo"))
             {
-                var bdinfo = await _serialPort.WriteCommand("bdinfo\n");
+                var bdinfo = await _serialService.Execute("bdinfo\n");
                 var boardInformation = ParseKeyValues(bdinfo);
             }
 
@@ -43,6 +43,80 @@ namespace RFDump.Bootloader.UBoot
             }
 
         }
+
+        public (bool success, uint lastKnownGoodAddress, byte[] binaryData) ValidateDumpData(string data, uint startAddress)
+        {
+            var lines = data.Split("\n");
+            var expectedAddress = startAddress;
+            var binaryData = new List<byte>();
+            if (lines.Length < 2)
+            {
+                return (false, startAddress, []);
+            }
+            foreach (var line in lines)
+            {
+                var cleanLine = line.Replace("\r", "");
+                if (string.IsNullOrEmpty(cleanLine))
+                {
+                    continue;
+                }
+
+                if (!_dataRegex.IsMatch(cleanLine))
+                {
+                    return (false, expectedAddress, []);
+                }
+                var match = _dataRegex.Match(cleanLine);
+                var address = Convert.ToUInt32(match.Groups["address"].Value, 16);
+                if (address != expectedAddress)
+                {
+                    // If the address is not what we expect (should be sequential), we need to find the last known good address
+                    return (false, expectedAddress, []);
+                }
+
+                var bytes = match.Groups["bytes"].Value;
+                var ascii = match.Groups["ascii"].Value;
+                var (validData, validBytes) = ValidateBytes(bytes, ascii);
+                if (!validData)
+                {
+                    return (false, expectedAddress, []);
+                }
+                binaryData.AddRange(validBytes);
+                expectedAddress += 0x10;
+            }
+            return (true, expectedAddress, binaryData.ToArray());
+        }
+
+        private static (bool, byte[]) ValidateBytes(string bytes, string ascii)
+        {
+            var values = bytes.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+            var validBytes = new byte[16];
+            if (values.Length != 16)
+            {
+                return (false, []);
+            }
+            var index = 0;
+            foreach (var value in values)
+            {
+                if (value.Length != 2)
+                {
+                    return (false, []);
+                }
+                try
+                {
+                    validBytes[index] = Convert.ToByte(value, 16);
+                    index++;
+                }
+                catch
+                {
+                    return (false, []);
+                }
+            }
+            return (true, validBytes);
+        }
+
+
+        [GeneratedRegex(@"(?<address>[a-f0-9]+): (?<bytes>[a-z0-9\s]+)    (?<ascii>.*)")]
+        private static partial Regex DataLineMatcher();
 
         private static Dictionary<string, string> ParseUBootHelp(string rawHelp)
         {
@@ -103,25 +177,6 @@ namespace RFDump.Bootloader.UBoot
             return match.Success ? match.Groups[1].Value : string.Empty;
         }
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposedValue)
-            {
-                if (disposing)
-                {
-                    _serialPort.Dispose();
-                }
-
-                _disposedValue = true;
-            }
-        }
-
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
         public void HandleBoot(string prelimData)
         {
             var version = GetUBootVersion(prelimData);
@@ -133,30 +188,17 @@ namespace RFDump.Bootloader.UBoot
         {
             if (data == null)
             {
-                data = _serialPort.ReadExisting();
-            }
-            else
-            {
-                _serialPort.DataReceived += OnDataReceived;
+                data = _serialService.ReadAvailableData();
             }
 
             if (data.Contains("Hit any key to stop autoboot"))
             {
-                _serialPort.Write("\n");
+                _serialService.SendKey(ConsoleKey.Enter);
             }
 
             if (data.Contains("=>"))
             {
                 IsReady = true;
-            }
-        }
-
-        private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
-        {
-            CheckForAutobootInterrupt();
-            if (IsReady)
-            {
-                _serialPort.DataReceived -= OnDataReceived;
             }
         }
     }

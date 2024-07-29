@@ -1,21 +1,13 @@
-﻿using System.IO.Ports;
-using System.Text.RegularExpressions;
+﻿using QuiCLI.Command;
 
-using QuiCLI.Command;
-
-using RFDump.Bootloader;
-using RFDump.Bootloader.UBoot;
-using RFDump.Extensions;
 using RFDump.Service;
 
 using Spectre.Console;
 
 namespace RFDump.Command;
-public partial class DumpCommand(SerialService serialService)
+public class DumpCommand(SerialService serialService)
 {
     private readonly SerialService _serialService = serialService;
-    private IBootHandler? _bootHandler = null;
-    private readonly Regex _dataRegex = DataLineMatcher();
 
     [Command("ports")]
     public string Ports()
@@ -41,8 +33,6 @@ public partial class DumpCommand(SerialService serialService)
             AnsiConsole.Write(new Markup($"[bold red]{result.Error}[/]"));
         }
 
-        var serial = result.Value;
-        serial.DataReceived += Initialize;
 
         await AnsiConsole.Progress().AutoClear(false).Columns(
             [
@@ -55,14 +45,9 @@ public partial class DumpCommand(SerialService serialService)
         {
             var bootloader = ctx.AddTask("Access boot loader...", true);
             bootloader.IsIndeterminate = true;
-            while (!_bootHandler?.IsReady ?? true)
-            {
-                await Task.Delay(100);
-            }
+            var bootloaderHandler = await _serialService.DetectBootLoader();
             bootloader.Increment(100);
-            serial.DataReceived -= Initialize;
 
-            var bootloaderHandler = new UBootHandler(serial);
             var gatherInfo = ctx.AddTask("Gathering information...", true);
             await bootloaderHandler.Initialize();
             gatherInfo.Increment(100);
@@ -79,8 +64,8 @@ public partial class DumpCommand(SerialService serialService)
                     chunkSize = endAddress - currentAddress;
                 }
 
-                var dump = await serial.DumpMemoryBlock(currentAddress, chunkSize);
-                var (success, lastKnownGoodAddress, binaryData) = ValidateDumpData(dump, currentAddress);
+                var dump = await _serialService.DumpMemoryBlock(currentAddress, chunkSize);
+                var (success, lastKnownGoodAddress, binaryData) = bootloaderHandler.ValidateDumpData(dump, currentAddress);
                 if (!success)
                 {
                     var step = chunkSize - ((currentAddress + chunkSize) - lastKnownGoodAddress);
@@ -99,101 +84,8 @@ public partial class DumpCommand(SerialService serialService)
         });
     }
 
-    private (bool success, uint lastKnownGoodAddress, byte[] binaryData) ValidateDumpData(string data, uint startAddress)
-    {
-        var lines = data.Split("\n");
-        var expectedAddress = startAddress;
-        var binaryData = new List<byte>();
-        if (lines.Length < 2)
-        {
-            return (false, startAddress, []);
-        }
-        foreach (var line in lines)
-        {
-            var cleanLine = line.Replace("\r", "");
-            if (string.IsNullOrEmpty(cleanLine))
-            {
-                continue;
-            }
-
-            if (!_dataRegex.IsMatch(cleanLine))
-            {
-                return (false, expectedAddress, []);
-            }
-            var match = _dataRegex.Match(cleanLine);
-            var address = Convert.ToUInt32(match.Groups["address"].Value, 16);
-            if (address != expectedAddress)
-            {
-                // If the address is not what we expect (should be sequential), we need to find the last known good address
-                return (false, expectedAddress, []);
-            }
-
-            var bytes = match.Groups["bytes"].Value;
-            var ascii = match.Groups["ascii"].Value;
-            var (validData, validBytes) = ValidateBytes(bytes, ascii);
-            if (!validData)
-            {
-                return (false, expectedAddress, []);
-            }
-            binaryData.AddRange(validBytes);
-            expectedAddress += 0x10;
-        }
-        return (true, expectedAddress, binaryData.ToArray());
-    }
-
-    private static (bool, byte[]) ValidateBytes(string bytes, string ascii)
-    {
-        var values = bytes.Split(" ", StringSplitOptions.RemoveEmptyEntries);
-        var validBytes = new byte[16];
-        if (values.Length != 16)
-        {
-            return (false, []);
-        }
-        var index = 0;
-        foreach (var value in values)
-        {
-            if (value.Length != 2)
-            {
-                return (false, []);
-            }
-            try
-            {
-                validBytes[index] = Convert.ToByte(value, 16);
-                index++;
-            }
-            catch
-            {
-                return (false, []);
-            }
-        }
-        return (true, validBytes);
-    }
-
-    private void Initialize(object sender, SerialDataReceivedEventArgs e)
-    {
-        var sp = (SerialPort)sender;
-        var data = sp.ReadExisting();
-
-        foreach (var line in data.Split("\n"))
-        {
-            var cleanLine = line.Replace("\r", "");
-            _bootHandler = Detector.DetectBootloader(cleanLine, sp);
-
-            if (_bootHandler != null)
-            {
-                AnsiConsole.MarkupLine($"[bold green]Bootloader detected:[/] {_bootHandler.BootloaderInfo}");
-                sp.DataReceived -= Initialize;
-                _bootHandler.HandleBoot(data);
-                break;
-            }
-        }
-    }
-
     private static string EscapeMarkup(string data)
     {
         return data.Replace("[", "[[").Replace("]", "]]");
     }
-
-    [GeneratedRegex(@"(?<address>[a-f0-9]+): (?<bytes>[a-z0-9\s]+)    (?<ascii>.*)")]
-    private static partial Regex DataLineMatcher();
 }
