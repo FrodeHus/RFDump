@@ -1,4 +1,6 @@
-﻿using QuiCLI.Command;
+﻿using System.IO.Ports;
+
+using QuiCLI.Command;
 
 using RFDump.Service;
 
@@ -10,10 +12,14 @@ public class DumpCommand(SerialService serialService)
     private readonly SerialService _serialService = serialService;
 
     [Command("dump")]
-    public async Task Dump(string port, int baudRate = 115200, string filename = "firmware.bin", uint chunkSize = 0x4000)
+    public async Task Dump(string? port = null, int baudRate = 115200, string filename = "firmware.bin", uint chunkSize = 0x4000)
     {
-        AnsiConsole.MarkupLine($"[bold]Dumping firmware from device connected to port [yellow]{port}[/] at [yellow]{baudRate}[/] baud rate to [yellow]{filename}[/] with a chunk size of [yellow]{chunkSize}[/] bytes[/]");
-        var result = _serialService.Connect(port, baudRate);
+        SerialConfiguration? config = port == null
+            ? Configure.AskForSerialSettings(_serialService)
+            : new SerialConfiguration(port, baudRate, 8, Parity.None, StopBits.One);
+        
+        AnsiConsole.MarkupLine($"[bold]Dumping firmware from device connected to port [yellow]{config.Port}[/] at [yellow]{config.BaudRate}[/] baud rate to [yellow]{filename}[/] with a chunk size of [yellow]{chunkSize}[/] bytes[/]");
+        var result = _serialService.Connect(config);
 
         if (result.IsFailure)
         {
