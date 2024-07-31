@@ -20,7 +20,7 @@ internal static class Configure
 
         var port = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("Select port ")
-            .AddChoices(serialService.GetPorts().Value));
+            .AddChoices(ports.Value));
 
         var baudRate = AnsiConsole.Prompt(new TextPrompt<int>("Enter baud rate")
             .DefaultValue(115200));
