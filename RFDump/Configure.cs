@@ -1,4 +1,6 @@
 ﻿using System.IO.Ports;
+using System.Reflection;
+using System.Resources;
 
 using RFDump.Service;
 
@@ -7,10 +9,16 @@ using Spectre.Console;
 namespace RFDump;
 
 public record SerialConfiguration(string Port, int BaudRate, int DataBits, Parity Parity, StopBits StopBits);
+public record DumpConfiguration(string Filename, SerialConfiguration SerialConfiguration);
 internal static class Configure
 {
-    public static SerialConfiguration AskForSerialSettings(SerialService serialService)
+    public static DumpConfiguration AskForDumpConfiguration(SerialService serialService)
     {
+        var font = GetFigletFont("miniFont");
+        AnsiConsole.Write(new FigletText(font, "RFDump"));
+        AnsiConsole.MarkupLine("[cyan]Firmware dump configuration[/]");
+        var filename = AnsiConsole.Prompt(new TextPrompt<string>("Enter filename for dump")
+            .DefaultValue("firmware.bin"));
         var ports = serialService.GetPorts();
         if (ports.IsFailure || ports.Value.Count == 0)
         {
@@ -37,8 +45,16 @@ internal static class Configure
             var stopBits = AnsiConsole.Prompt(new SelectionPrompt<StopBits>().Title("Select stop bits")
                 .AddChoices(StopBits.One, StopBits.Two));
 
-            return new SerialConfiguration(port, baudRate, dataBits, parity, stopBits);
+            return new DumpConfiguration(filename, new SerialConfiguration(port, baudRate, dataBits, parity, stopBits));
         }
-        return new SerialConfiguration(port, baudRate, 8, Parity.None, StopBits.One);
+        return new DumpConfiguration(filename, new SerialConfiguration(port, baudRate, 8, Parity.None, StopBits.One));
     }
+
+    private static FigletFont GetFigletFont(string name)
+    {
+        var font = RFDump.FigletFont;
+
+        return FigletFont.Parse(font);
+    }
+
 }

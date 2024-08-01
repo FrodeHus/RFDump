@@ -14,12 +14,13 @@ public class DumpCommand(SerialService serialService)
     [Command("dump")]
     public async Task Dump(string? port = null, int baudRate = 115200, string filename = "firmware.bin", uint chunkSize = 0x4000)
     {
-        SerialConfiguration? config = port == null
-            ? Configure.AskForSerialSettings(_serialService)
-            : new SerialConfiguration(port, baudRate, 8, Parity.None, StopBits.One);
-        
-        AnsiConsole.MarkupLine($"[bold]Dumping firmware from device connected to port [yellow]{config.Port}[/] at [yellow]{config.BaudRate}[/] baud rate to [yellow]{filename}[/] with a chunk size of [yellow]{chunkSize}[/] bytes[/]");
-        var result = _serialService.Connect(config);
+        DumpConfiguration? dumpConfig = port == null
+            ? Configure.AskForDumpConfiguration(_serialService)
+            : new DumpConfiguration(filename, new SerialConfiguration(port, baudRate, 8, Parity.None, StopBits.One));
+
+        var serialConfig = dumpConfig.SerialConfiguration;
+        AnsiConsole.MarkupLine($"[bold]Dumping firmware from device connected to port [yellow]{serialConfig.Port}[/] at [yellow]{serialConfig.BaudRate}[/] baud rate to [yellow]{dumpConfig.Filename}[/] with a chunk size of [yellow]{chunkSize}[/] bytes[/]");
+        var result = _serialService.Connect(serialConfig);
 
         if (result.IsFailure)
         {
@@ -53,7 +54,7 @@ public class DumpCommand(SerialService serialService)
             var endAddress = address + 0x1000000;
             var dumpProgress = ctx.AddTask($"Dumping memory [cyan]0x{address:X}[/][yellow]/[/][cyan]0x{endAddress:X}[/]...", true, maxValue: 0x1000000);
             var currentAddress = address;
-            await using var file = File.Create(filename);
+            await using var file = File.Create(dumpConfig.Filename);
             while (currentAddress < endAddress)
             {
                 if (currentAddress + chunkSize > endAddress)

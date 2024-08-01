@@ -10,7 +10,6 @@ namespace RFDump.Service
     public class SerialService
     {
         private SerialPort? _port;
-        public event EventHandler<string>? OnDataReceived;
 
         public Result<SerialPort> Connect(SerialConfiguration configuration)
         {
