@@ -2,7 +2,7 @@
   "profiles": {
     "RFDump": {
       "commandName": "Project",
-      "commandLineArgs": "dump --port COM3"
+      "commandLineArgs": "dump"
     }
   }
 }

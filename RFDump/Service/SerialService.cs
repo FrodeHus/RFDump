@@ -10,7 +10,12 @@ namespace RFDump.Service
     public class SerialService
     {
         private SerialPort? _port;
-        public event EventHandler<string>? OnDataReceived;
+
+        public Result<SerialPort> Connect(SerialConfiguration configuration)
+        {
+            return Connect(configuration.Port, configuration.BaudRate);
+        }
+
         public Result<SerialPort> Connect(string port, int baudRate = 115200)
         {
             _port = new SerialPort(port, baudRate, Parity.None, 8, StopBits.One);
