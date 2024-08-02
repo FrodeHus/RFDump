@@ -10,25 +10,17 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        arch: [x64, arm64]
-        include:
-          - os: ubuntu-latest
-            arch: x64
-          - os: ubuntu-latest
-            arch: arm64
-          - os: windows-latest
-            arch: x64
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
@@ -36,12 +28,12 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet publish -c Release -r ${{ matrix.os }}-${{ matrix.arch }} -o output
+        run: dotnet publish -c Release -o output
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4.3.4
         with:
-          name: ${{ matrix.os }}-${{ matrix.arch }}-binary
+          name: rfdump-${{ matrix.os }}
           path: output/
 
   release:
@@ -49,19 +41,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4.3.4
         with:
-          name: ${{ matrix.os }}-${{ matrix.arch }}-binary
+          name: rfdump-${{ matrix.os }}
           path: ./binaries
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: actions/create-release@v1.9.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
+          generateReleaseNotes: true
           draft: false
           prerelease: false
 
@@ -72,5 +65,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./binaries
-          asset_name: ${{ matrix.os }}-${{ matrix.arch }}-binary.zip
+          asset_name: rfdump-${{ matrix.os }}.zip
           asset_content_type: application/zip
