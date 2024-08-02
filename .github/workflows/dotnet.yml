@@ -9,7 +9,7 @@ on:
     paths:
     - RFDump/**
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
     paths:
     - RFDump/**
     
