@@ -16,7 +16,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: rfdump-linux-x64
+          - os: windows-latest
+            artifact_name: rfdump-windows-x64.exe
 
     steps:
       - name: Checkout code
@@ -31,12 +35,12 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet publish -c Release -o output
+        run: dotnet publish RFDump/RFDump.cproj -c Release -o output
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4.3.4
         with:
-          name: rfdump-${{ matrix.os }}
+          name: ${{ matrix.artifact_name }}
           path: output/
 
   release:
@@ -46,9 +50,8 @@ jobs:
       contents: write
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4.3.4
+        uses: actions/download-artifact@v4.1.8
         with:
-          name: rfdump-${{ matrix.os }}
           path: ./binaries
 
       - name: Create Release
@@ -59,5 +62,5 @@ jobs:
         with:
           tag: ${{ inputs.tag }}
           generateReleaseNotes: true
-          artifact: ./binaries/rfdump-**
+          artifact: ./binaries/**
 
