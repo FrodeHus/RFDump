@@ -19,8 +19,10 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact_name: rfdump-linux-x64
+            archive: tar
           - os: windows-latest
             artifact_name: rfdump-windows-x64.exe
+            archive: zip
 
     steps:
       - name: Checkout code
@@ -35,13 +37,20 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet publish RFDump/RFDump.csproj -c Release -o output
+        run: dotnet publish RFDump/RFDump.csproj -c Release -o output /p:DebugType=None /p:DebugSymbols=false
 
+      - name: Zip Release
+        uses: TheDoctor0/zip-release@0.7.6
+        with:
+          # Filename for archive
+          filename: ${{ matrix.artifact_name }}.${{ matrix.archive }}
+          directory: output/
+          type: ${{ matrix.archive }}
+                
       - name: Upload artifact
         uses: actions/upload-artifact@v4.3.4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: output/
+          name: ${{ matrix.artifact_name }}.${{ matrix.archive }}
 
   release:
     needs: build
@@ -63,4 +72,5 @@ jobs:
           tag: ${{ inputs.tag }}
           generateReleaseNotes: true
           artifact: ./binaries/**
+          artifactContentType: application/zip
 
