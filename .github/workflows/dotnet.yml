@@ -6,9 +6,13 @@ name: .NET
 on:
   push:
     branches: [ "master" ]
+    paths:
+    - RFDump/**
   pull_request:
     branches: [ "master" ]
-
+    paths:
+    - RFDump/**
+    
 jobs:
   build:
 
