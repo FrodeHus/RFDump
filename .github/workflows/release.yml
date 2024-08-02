@@ -35,7 +35,7 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet publish RFDump/RFDump.cproj -c Release -o output
+        run: dotnet publish RFDump/RFDump.csproj -c Release -o output
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4.3.4
