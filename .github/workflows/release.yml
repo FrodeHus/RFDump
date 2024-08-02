@@ -19,10 +19,8 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact_name: rfdump-linux-x64
-            archive: tar
           - os: windows-latest
             artifact_name: rfdump-windows-x64.exe
-            archive: zip
 
     steps:
       - name: Checkout code
@@ -43,9 +41,9 @@ jobs:
         uses: TheDoctor0/zip-release@0.7.6
         with:
           # Filename for archive
-          filename: ${{ matrix.artifact_name }}.${{ matrix.archive }}
+          filename: ${{ matrix.artifact_name }}.zip
           directory: output/
-          type: ${{ matrix.archive }}
+          type: zip
                 
       - name: Upload artifact
         uses: actions/upload-artifact@v4.3.4
