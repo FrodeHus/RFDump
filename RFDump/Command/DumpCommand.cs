@@ -11,7 +11,7 @@ public class DumpCommand(SerialService serialService)
 {
     private readonly SerialService _serialService = serialService;
 
-    [Command("dump")]
+    [Command("dump", help: "Dump firmware from connected serial device")]
     public async Task Dump(string? port = null, int baudRate = 115200, string filename = "firmware.bin", uint chunkSize = 0x4000)
     {
         DumpConfiguration? dumpConfig = port == null

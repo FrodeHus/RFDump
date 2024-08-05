@@ -1,10 +1,10 @@
 ﻿using System.IO.Ports;
-using System.Reflection;
-using System.Resources;
+using System.Text;
 
 using RFDump.Service;
 
 using Spectre.Console;
+using Spectre.Console.Rendering;
 
 namespace RFDump;
 
@@ -14,8 +14,7 @@ internal static class Configure
 {
     public static DumpConfiguration AskForDumpConfiguration(SerialService serialService)
     {
-        var font = GetFigletFont("miniFont");
-        AnsiConsole.Write(new FigletText(font, "RFDump"));
+        PrintBanner();
         AnsiConsole.MarkupLine("[cyan]Firmware dump configuration[/]");
         var filename = AnsiConsole.Prompt(new TextPrompt<string>("Enter filename for dump")
             .DefaultValue("firmware.bin"));
@@ -50,11 +49,17 @@ internal static class Configure
         return new DumpConfiguration(filename, new SerialConfiguration(port, baudRate, 8, Parity.None, StopBits.One));
     }
 
-    private static FigletFont GetFigletFont(string name)
+    internal static FigletFont GetFigletFont()
     {
         var font = RFDump.FigletFont;
 
         return FigletFont.Parse(font);
     }
 
+    internal static void PrintBanner()
+    {
+        var font = GetFigletFont();
+        var banner = new FigletText(font, "RFDump");
+        AnsiConsole.Write(banner);
+    }
 }

@@ -14,7 +14,7 @@ namespace RFDump.Command
     {
         private readonly SerialService _serialService = serialService;
 
-        [Command("ports")]
+        [Command("ports", help: "List all detected serial ports")]
         public string Ports()
         {
             var ports = _serialService.GetPorts();
