@@ -8,11 +8,12 @@
     <PublishAot>true</PublishAot>
     <PublishTrimmed>True</PublishTrimmed>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <AssemblyName>rfdump</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="QuiCLI" Version="0.3.2" />
+    <PackageReference Include="QuiCLI" Version="0.3.3" />
     <PackageReference Include="Spectre.Console" Version="0.49.1" />
     <PackageReference Include="System.IO.Ports" Version="8.0.0" />
   </ItemGroup>
@@ -23,21 +24,6 @@
 
   <ItemGroup>
     <None Include="D:\RFDump\RFDump\.editorconfig" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="RFDump.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>RFDump.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="RFDump.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>RFDump.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
   </ItemGroup>
 
 </Project>
