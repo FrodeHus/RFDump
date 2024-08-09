@@ -12,17 +12,24 @@ RFDump currently supports devices with the following boot loaders:
 ## Usage
 
 ```bash
-./RFDump --help
-Usage:
-  <command> [arguments]
+./rfdump dump --help
 
-Commands:
-        ports
-        dump
+  _    _   _
+ |_)  |_  | \       ._ _   ._
+ | \  |   |_/  |_|  | | |  |_)
+                           |
 
+Usage: dump
+Dump firmware from connected serial device
+
+Arguments:
+        --port          :       <String>
+        --baud-rate     :       <Int32>
+        --filename      :       <String>
+        --chunk-size    :       <UInt32>
 
 Global Arguments:
-        --help  :       Show help information
+        --help          :       Show help information
         --output        :       Output format
 ```
 
