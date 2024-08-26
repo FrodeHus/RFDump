@@ -15,8 +15,8 @@ builder.Configure(config => config.CustomBanner = () =>
 });
 
 builder.Services.AddTransient<SerialService>();
+builder.Commands.AddCommand<DumpCommand>("dump").UseMethod(x => x.Dump);
+builder.Commands.AddCommand<PortCommand>("port").UseMethod(x => x.Ports);
 var app = builder.Build();
 
-app.AddCommand((sp) => new DumpCommand(sp.GetRequiredService<SerialService>()));
-app.AddCommand((sp) => new PortCommand(sp.GetRequiredService<SerialService>()));
 app.Run();
